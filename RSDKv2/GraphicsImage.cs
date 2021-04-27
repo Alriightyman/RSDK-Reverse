@@ -2,9 +2,9 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 
-/* Yes, RSDKv2 has support for the .gfx format */
+/*Yes, RSDKv1 has support for the .gfx format*/
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class GraphicsImage
     {

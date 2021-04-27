@@ -4,7 +4,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
-namespace RSDKv1
+/* Taxman sure loves leaving support for fileformats in his code */
+
+namespace RSDKv2
 {
     public class Video
     {
@@ -216,7 +218,7 @@ namespace RSDKv1
                                 // Application Extension
                                 case 0xFF:
                                     temp = reader.ReadByte(); // Block Size
-                                                              // Continue until we run out of blocks
+                                                               // Continue until we run out of blocks
                                     while (temp != 0)
                                     {
                                         // Read block

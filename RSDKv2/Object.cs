@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class Object
     {
@@ -29,7 +29,7 @@ namespace RSDKv2
         /// </summary>
         public short yPos;
         /// <summary>
-        /// how many objects we've loaded
+        /// how to load the "attribute"?
         /// </summary>
         public static int cur_id = 0;
         /// <summary>
@@ -90,16 +90,16 @@ namespace RSDKv2
         public void Write(Writer writer)
         {
             if (type > 255)
-                throw new Exception("Cannot save as Type v2. Object type > 255");
+                throw new Exception("Cannot save as Type v1. Object type > 255");
 
             if (subtype > 255)
-                throw new Exception("Cannot save as Type v2. Object subtype > 255");
+                throw new Exception("Cannot save as Type v1. Object subtype > 255");
 
             if (xPos < -32768 || xPos > 32767)
-                throw new Exception("Cannot save as Type v2. Object X Position can't fit in 16-bits");
+                throw new Exception("Cannot save as Type v1. Object X Position can't fit in 16-bits");
 
             if (yPos < -32768 || yPos > 32767)
-                throw new Exception("Cannot save as Type v2. Object Y Position can't fit in 16-bits");
+                throw new Exception("Cannot save as Type v1. Object Y Position can't fit in 16-bits");
 
             writer.Write(type);
             writer.Write(subtype);

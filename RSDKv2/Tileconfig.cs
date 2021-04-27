@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class Tileconfig
     {

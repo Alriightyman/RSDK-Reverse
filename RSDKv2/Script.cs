@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class Script
     {

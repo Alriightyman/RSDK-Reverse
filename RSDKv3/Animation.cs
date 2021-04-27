@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RSDKv1
+namespace RSDKv2
 {
     [Serializable]
     public class Animation : ICloneable
@@ -10,66 +10,6 @@ namespace RSDKv1
         {
             return this.MemberwiseClone();
         }
-
-        /// <summary>
-        /// the default names for the animations
-        /// </summary>
-        public string[] AnimNames = new string[]
-{
-            "Stopped",
-            "Waiting",
-            "Bored",
-            "Looking Up",
-            "Looking Down",
-            "Walking",
-            "Running",
-            "Skidding",
-            "SuperPeelOut",
-            "Spin Dash",
-            "Jumping",
-            "Bouncing",
-            "Hurt",
-            "Dying",
-            "Drowning",
-            "Life Icon",
-            "Fan Rotate",
-            "Breathing",
-            "Pushing",
-            "Flailing Left",
-            "Flailing Right",
-            "Sliding",
-            "Sonic Nexus Animation #23",
-            "FinishPose",
-            "Sonic Nexus Animation #24",
-            "Sonic Nexus Animation #25",
-            "Sonic Nexus Animation #26",
-            "Sonic Nexus Animation #27",
-            "Sonic Nexus Animation #28",
-            "Sonic Nexus Animation #29",
-            "Sonic Nexus Animation #30",
-            "Sonic Nexus Animation #31",
-            "Sonic Nexus Animation #32",
-            "Sonic Nexus Animation #33",
-            "Cork Screw",
-            "Sonic Nexus Animation #35",
-            "Sonic Nexus Animation #36",
-            "Sonic Nexus Animation #37",
-            "Sonic Nexus Animation #38",
-            "Sonic Nexus Animation #39",
-            "Sonic Nexus Animation #40",
-            "Sonic Nexus Animation #41",
-            "Sonic Nexus Animation #42",
-            "Hanging",
-            "Sonic Nexus Animation #44",
-            "Sonic Nexus Animation #45",
-            "Sonic Nexus Animation #46",
-            "Sonic Nexus Animation #47",
-            "Sonic Nexus Animation #48",
-            "Sonic Nexus Animation #49",
-            "Sonic Nexus Animation #50",
-            "Sonic Nexus Animation #51",
-};
-
         /// <summary>
         /// a string to be added to the start of the path
         /// </summary>
@@ -81,21 +21,15 @@ namespace RSDKv1
             }
         }
 
-        //Why Taxman, why
         /// <summary>
-        /// Unknown Values, who knows what they do
+        /// if this is set then only allow one sheet (meaning it'll be used for Objects and not the player)
         /// </summary>
-        public byte[] Unknown = new byte[5];
-
-        /// <summary>
-        /// I don't really know tbh, might be a flag to stop loading textures?
-        /// </summary>
-        byte EndTexFlag;
+        public bool isObjectAni = false;
 
         /// <summary>
         /// a List of paths to the spritesheets, relative to "Data/Sprites"
         /// </summary>
-        public string[] SpriteSheets = new string[3];
+        public List<string> SpriteSheets = new List<string>();
 
         /// <summary>
         /// a list of the hitboxes that the animations can use
@@ -168,7 +102,7 @@ namespace RSDKv1
 
                 }
 
-                public Frame(Reader reader, bool bitFlipped = false)
+                public Frame(Reader reader, Animation anim = null)
                 {
                     SpriteSheet = reader.ReadByte();
                     CollisionBox = reader.ReadByte();
@@ -178,21 +112,6 @@ namespace RSDKv1
                     Height = reader.ReadByte();
                     PivotX = reader.ReadSByte();
                     PivotY = reader.ReadSByte();
-                    if (bitFlipped)
-                    {
-                        SpriteSheet ^= 255;
-                        CollisionBox ^= 255;
-                        X ^= 255;
-                        Y ^= 255;
-                        Width ^= 255;
-                        Height ^= 255;
-                        byte cx = (byte)PivotX;
-                        byte cy = (byte)PivotY;
-                        cx ^= 255;
-                        cy ^= 255;
-                        PivotX = (sbyte)cx;
-                        PivotY = (sbyte)cy;
-                    }
                 }
 
                 public void Write(Writer writer)
@@ -210,13 +129,9 @@ namespace RSDKv1
             }
 
             /// <summary>
-            /// the name of the animation (RSDKv1 doesn't have one, so we use a "Plain one")
+            /// the name of the animation
             /// </summary>
-            public string AnimationName
-            {
-                get;
-                set;
-            }
+            public string AnimName;
             /// <summary>
             /// a list of frames in the animation
             /// </summary>
@@ -229,35 +144,36 @@ namespace RSDKv1
             /// the speed multiplyer of the animation
             /// </summary>
             public byte SpeedMultiplyer;
+            /// <summary>
+            /// the rotation style of the animation
+            /// </summary>
+            public byte RotationFlags;
 
             public AnimationEntry()
             {
 
             }
 
-            public AnimationEntry(Reader reader, bool bitflipped = false)
+            public AnimationEntry(Reader reader, Animation anim = null)
             {
-                byte frameCount = reader.ReadByte();
+                AnimName = reader.ReadString();
+                short frameCount = reader.ReadByte();
                 SpeedMultiplyer = reader.ReadByte();
                 LoopIndex = reader.ReadByte();
-                if (bitflipped)
-                {
-                    frameCount ^= 255;
-                    SpeedMultiplyer ^= 255;
-                    LoopIndex ^= 255;
-                }
+                RotationFlags = reader.ReadByte();
                 for (int i = 0; i < frameCount; ++i)
                 {
-                    Frames.Add(new Frame(reader,bitflipped));
+                    Frames.Add(new Frame(reader,anim));
                 }
             }
 
             public void Write(Writer writer)
             {
+                writer.Write(AnimName);
                 writer.Write((byte)Frames.Count);
                 writer.Write(SpeedMultiplyer);
                 writer.Write(LoopIndex);
-
+                writer.Write(RotationFlags);
                 for (int i = 0; i < Frames.Count; ++i)
                 {
                     Frames[i].Write(writer);
@@ -284,6 +200,7 @@ namespace RSDKv1
 
         }
 
+        [Serializable]
         public class sprHitbox
         {
             public struct HitboxInfo
@@ -301,7 +218,7 @@ namespace RSDKv1
 
             }
 
-            public sprHitbox(Reader reader, bool bitflipped = false)
+            public sprHitbox(Reader reader)
             {
                 for (int i = 0; i < 8; i++)
                 {
@@ -309,21 +226,6 @@ namespace RSDKv1
                     Hitboxes[i].Top = reader.ReadSByte();
                     Hitboxes[i].Right = reader.ReadSByte();
                     Hitboxes[i].Bottom = reader.ReadSByte();
-                    if (bitflipped)
-                    {
-                        byte l = (byte)Hitboxes[i].Left;
-                        byte r = (byte)Hitboxes[i].Right;
-                        byte b = (byte)Hitboxes[i].Bottom;
-                        byte t = (byte)Hitboxes[i].Top;
-                        l ^= 255;
-                        t ^= 255;
-                        r ^= 255;
-                        b ^= 255;
-                        Hitboxes[i].Left = (sbyte)l;
-                        Hitboxes[i].Right = (sbyte)r;
-                        Hitboxes[i].Bottom = (sbyte)b;
-                        Hitboxes[i].Top = (sbyte)t;
-                    }
                     Console.WriteLine(Hitboxes[i].Left + "," + Hitboxes[i].Top + "," + Hitboxes[i].Right + "," + Hitboxes[i].Bottom);
                 }
                 Console.WriteLine();
@@ -346,68 +248,29 @@ namespace RSDKv1
 
         }
 
-        public Animation(Reader reader,bool BitFlipped = false)
+        public Animation(Reader reader)
         {
-            Unknown = reader.ReadBytes(5);
-
-            if (BitFlipped)
-            {
-                for (int i = 0; i < 5; i++)
-                {
-                    Unknown[i] ^= 255;
-                }
-            }
-
-            int spriteSheetCount = 3; //always 3
-
+            int spriteSheetCount = reader.ReadByte();
             for (int i = 0; i < spriteSheetCount; ++i)
-            {
-                int sLen = reader.ReadByte();
-                if (BitFlipped) sLen ^= 255;
-                byte[] byteBuf = new byte[sLen];
+                SpriteSheets.Add(reader.ReadString());
 
-                byteBuf = reader.ReadBytes(sLen);
-
-                if (BitFlipped)
-                {
-                    for (int ii = 0; ii < sLen; ii++)
-                    {
-                        byteBuf[ii] ^= 255;
-                    }
-                }
-
-                string result = System.Text.Encoding.UTF8.GetString(byteBuf);
-
-                SpriteSheets[i] = result;
-            }
-
-            byte EndTexFlag = reader.ReadByte(); //Seems to tell the RSDK's reader when to stop reading textures???
-            if (BitFlipped) EndTexFlag ^= 255;
-
-            // Read number of animations
             var animationCount = reader.ReadByte();
-            if (BitFlipped) animationCount ^= 255;
             for (int i = 0; i < animationCount; ++i)
-                Animations.Add(new AnimationEntry(reader,BitFlipped));
+                Animations.Add(new AnimationEntry(reader));
 
             int collisionBoxCount = reader.ReadByte();
             for (int i = 0; i < collisionBoxCount; ++i)
-                CollisionBoxes.Add(new sprHitbox(reader, BitFlipped));
+                CollisionBoxes.Add(new sprHitbox(reader));
             reader.Close();
         }
 
         public void Write(Writer writer)
         {
-            writer.Write(Unknown); //No idea what these are chief
-
-            byte SheetCnt = (byte)SpriteSheets.Length;
-
-            for (int i = 0; i < SpriteSheets.Length; ++i)
+            writer.Write((byte)SpriteSheets.Count);
+            for (int i = 0; i < SpriteSheets.Count; ++i)
             {
                 writer.WriteRSDKString(SpriteSheets[i]);
             }
-
-            writer.Write(EndTexFlag);
 
             writer.Write((byte)Animations.Count);
             for (int i = 0; i < Animations.Count; ++i)
@@ -433,9 +296,11 @@ namespace RSDKv1
         {
             AnimationEntry a = new AnimationEntry();
 
+            a.AnimName = Animations[anim].AnimName;
             byte FrameAmount = (byte)Animations[anim].Frames.Count;
             a.LoopIndex = Animations[anim].LoopIndex;
             a.SpeedMultiplyer = Animations[anim].SpeedMultiplyer;
+            a.RotationFlags = Animations[anim].RotationFlags;
 
             a.Frames.Clear();
 
@@ -450,6 +315,19 @@ namespace RSDKv1
         public void DeleteAnimation(int frame)
         {
             Animations.RemoveAt(frame);
+        }
+
+        public int GetAnimByName(string name)
+        {
+            for (int i = 0; i < Animations.Count; i++)
+            {
+                if (Animations[i].AnimName == name)
+                {
+                    return i;
+                }
+            }
+            Console.WriteLine("An anim with that name didn't exist! Name = " + name);
+            return -1;
         }
 
         public void DeleteEndAnimation()

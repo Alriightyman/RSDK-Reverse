@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B41A3858-7E66-4755-9F50-94EA021155B6}</ProjectGuid>
+    <ProjectGuid>{E089DB56-F8D4-434E-A9A8-C7EFCC3278D8}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>RSDKv2</RootNamespace>
-    <AssemblyName>RSDKv2</AssemblyName>
+    <RootNamespace>RSDKv1</RootNamespace>
+    <AssemblyName>RSDKv1</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -39,14 +39,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Animation.cs" />
-    <Compile Include="ArcContainer.cs" />
     <Compile Include="BackgroundLayout.cs" />
-    <Compile Include="Bytecode.cs" />
     <Compile Include="Script.cs" />
-    <Compile Include="Setup.cs" />
-    <Compile Include="StringSet.cs" />
-    <Compile Include="TextFile.cs" />
-    <Compile Include="TextFont.cs" />
     <Compile Include="Tileconfig.cs" />
     <Compile Include="DataFile.cs" />
     <Compile Include="Gameconfig.cs" />
@@ -57,10 +51,9 @@
     <Compile Include="PaletteColour.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Reader.cs" />
-    <Compile Include="SaveFiles.cs" />
+    <Compile Include="Video.cs" />
     <Compile Include="Stageconfig.cs" />
     <Compile Include="Tiles128x128.cs" />
-    <Compile Include="Video.cs" />
     <Compile Include="Writer.cs" />
   </ItemGroup>
   <ItemGroup>

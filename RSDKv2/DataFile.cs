@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class DataFile
     {
@@ -21,47 +21,20 @@ namespace RSDKv2
 
             public DirInfo()
             {
-
             }
 
             public DirInfo(Reader reader)
             {
-                byte ss = reader.ReadByte();
-
-                char buf = ',';
-                string DecryptedString = "";
-
-                for (int i = 0; i < ss; i++)
-                {
-                    byte b = reader.ReadByte();
-                    int bufInt = (int)b;
-
-                    bufInt ^= 0xFF - ss;
-
-                    buf = (char)bufInt;
-                    DecryptedString = DecryptedString + buf;
-                }
-                Directory = DecryptedString;
+                Directory = reader.ReadString();
                 //Console.WriteLine(Directory);
                 Address = reader.ReadInt32();
             }
 
-            public void Write(Writer writer, bool SingleFile = false)
+            public void Write(Writer writer)
             {
                 Directory = Directory.Replace('\\', '/');
-                int ss = Directory.Length;
-                writer.Write((byte)ss);
-
-                string str = Directory;
-
-                for (int i = 0; i < ss; i++)
-                {
-                    int s = str[i];
-                    writer.Write((byte)(s ^ (0xFF - ss)));
-                }
-
+                writer.Write(Directory);
                 writer.Write(Address);
-                if (SingleFile) writer.Close();
             }
 
             public void Write(string dataFolder)
@@ -92,6 +65,11 @@ namespace RSDKv2
             public ulong fileSize;
 
             /// <summary>
+            /// is the file bitflipped?
+            /// </summary>
+            public bool encrypted = false;
+
+            /// <summary>
             /// an array of bytes in the file
             /// </summary>
             public byte[] Filedata;
@@ -99,178 +77,85 @@ namespace RSDKv2
             /// <summary>
             /// what directory the file is in
             /// </summary>
-            public ushort DirID = 0;
-
-            int decryptKeyZ;
-            int decryptKeyIndexZ;
-            int decryptKeyIndex2;
-            int decryptKeyIndex1;
-
-            string decryptKey1 = "4RaS9D7KaEbxcp2o5r6t";
-            string decryptKey2 = "3tRaUxLmEaSn";
+            public byte DirID = 0;
 
             public FileInfo()
             {
-
             }
 
             public FileInfo(Reader reader)
             {
-                byte ss = reader.ReadByte();
+                bool DontFlip = false;
+                FileName = reader.ReadString();
 
-                char buf = ',';
-                string DecryptedString = "";
+                string ext = System.IO.Path.GetExtension(FileName);
 
-                for (int i = 0; i < ss; i++)
+                if (ext == ".ogg" || ext == ".wav")
                 {
-                    byte b = reader.ReadByte();
-                    int bufInt = b;
-
-                    bufInt ^= 0xFF;
-
-                    buf = (char)bufInt;
-                    DecryptedString = DecryptedString + buf;
+                    DontFlip = true;
+                    encrypted = false;
+                }
+                else
+                {
+                    encrypted = true;
+                    DontFlip = false;
                 }
 
-                FileName = DecryptedString;
-
-                //Console.WriteLine(FileName);
-
-                fileSize = reader.ReadUInt32();
-
-                byte[] tmp = reader.ReadBytes(fileSize);
-                int[] outbuf = new int[fileSize];
-
-                for (int i = 0; i < (int)fileSize; i++)
+                //Console.WriteLine(FileName + " Test " + DontFlip);
+                if (DontFlip)
                 {
-                    outbuf[i] = tmp[i];
+                    fileSize = reader.ReadUInt32();
+                    Filedata = reader.ReadBytes(fileSize);
                 }
-
-                decryptKeyZ = ((int)fileSize & 0x1fc) >> 2;
-                decryptKeyIndex2 = (decryptKeyZ % 9) + 1;
-                decryptKeyIndex1 = (decryptKeyZ % decryptKeyIndex2) + 1;
-
-                decryptKeyIndexZ = 0;
-
-                for (int i = 0; i < (int)fileSize; i++)
+                else if (!DontFlip)
                 {
-                    outbuf[i] ^= decryptKey2[decryptKeyIndex2++] ^ decryptKeyZ;
-
-                    if (decryptKeyIndexZ == 1) // swap nibbles
-                        outbuf[i] = (outbuf[i] >> 4) | ((outbuf[i] & 0xf) << 4);
-
-                    outbuf[i] ^= decryptKey1[decryptKeyIndex1++];
-
-                    if ((decryptKeyIndex1 <= 19) || (decryptKeyIndex2 <= 11))
+                    fileSize = reader.ReadUInt32();
+                    Filedata = reader.ReadBytes(fileSize);
+                    for (int i = 0; i < Filedata.Length; i++)
                     {
-                        if (decryptKeyIndex1 > 19)
-                        {
-                            decryptKeyIndex1 = 1;
-                            decryptKeyIndexZ ^= 1;
-                        }
-                        if (decryptKeyIndex2 > 11)
-                        {
-                            decryptKeyIndex2 = 1;
-                            decryptKeyIndexZ ^= 1;
-                        }
-                    }
-                    else
-                    {
-                        decryptKeyZ++;
-                        decryptKeyZ &= 0x7F;
-
-                        if (decryptKeyIndexZ != 0)
-                        {
-                            decryptKeyIndex1 = (decryptKeyZ % 12) + 6;
-                            decryptKeyIndex2 = (decryptKeyZ % 5) + 4;
-                            decryptKeyIndexZ = 0;
-                        }
-                        else
-                        {
-                            decryptKeyIndexZ = 1;
-                            decryptKeyIndex1 = (decryptKeyZ % 15) + 3;
-                            decryptKeyIndex2 = (decryptKeyZ % 7) + 1;
-                        }
+                        byte b = (byte)~Filedata[i];
+                        Filedata[i] = b;
                     }
                 }
-                Filedata = new byte[outbuf.Length];
-                for (int i = 0; i <outbuf.Length; i++)
-                {
-                    Filedata[i] = (byte)outbuf[i];
-                }
-                
             }
 
             public void Write(Writer writer, bool SingleFile = false)
             {
+                bool DontFlip = false;
                 FileName = FileName.Replace('\\', '/');
-                fileSize = (uint)Filedata.Length;
+                writer.Write(FileName);
 
-                if (SingleFile)
+                string ext = System.IO.Path.GetExtension(FileName);
+
+                if (ext == ".ogg" || ext == ".wav")
                 {
-                    writer.Write(fileSize);
-                    writer.Write(Filedata);
-                    writer.Close();
+                    DontFlip = true;
+                    encrypted = false;
                 }
                 else
                 {
-                    byte[] outfbuf = Filedata;
-
-                    // Encrypt file
-                    decryptKeyZ = (byte)(fileSize & 0x1fc) >> 2;
-                    decryptKeyIndex2 = (decryptKeyZ % 9) + 1;
-                    decryptKeyIndex1 = (decryptKeyZ % decryptKeyIndex2) + 1;
-
-                    decryptKeyIndexZ = 0;
-
-                    for (ulong i = 0; i < fileSize; i++)
-                    {
-                        outfbuf[i] ^= (byte)decryptKey1[decryptKeyIndex1++];
-
-                        if (decryptKeyIndexZ == 1) // swap nibbles
-                            outfbuf[i] = (byte)((outfbuf[i] >> 4) | ((outfbuf[i] & 0xf) << 4));
-
-                        outfbuf[i] ^= (byte)(decryptKey2[decryptKeyIndex2++] ^ decryptKeyZ);
-
-                        if ((decryptKeyIndex1 <= 19) || (decryptKeyIndex2 <= 11))
-                        {
-                            if (decryptKeyIndex1 > 19)
-                            {
-                                decryptKeyIndex1 = 1;
-                                decryptKeyIndexZ ^= 1;
-                            }
-                            if (decryptKeyIndex2 > 11)
-                            {
-                                decryptKeyIndex2 = 1;
-                                decryptKeyIndexZ ^= 1;
-                            }
-                        }
-                        else
-                        {
-                            decryptKeyZ++;
-                            decryptKeyZ &= 0x7F;
-
-                            if (decryptKeyIndexZ != 0)
-                            {
-                                decryptKeyIndex1 = (decryptKeyZ % 12) + 6;
-                                decryptKeyIndex2 = (decryptKeyZ % 5) + 4;
-                                decryptKeyIndexZ = 0;
-                            }
-                            else
-                            {
-                                decryptKeyIndexZ = 1;
-                                decryptKeyIndex1 = (decryptKeyZ % 15) + 3;
-                                decryptKeyIndex2 = (decryptKeyZ % 7) + 1;
-                            }
-                        }
-                    }
-
-                    for (int i = 0; i < FileName.Length; i++)
-                        writer.Write((byte)(FileName[i] ^ (0xFF)));
-
-                    writer.Write((uint)fileSize);
-                    writer.Write(outfbuf);
+                    encrypted = true;
+                    DontFlip = false;
                 }
+
+                //Console.WriteLine(FileName + " Test " + DontFlip);
+
+                if (DontFlip)
+                {
+                    writer.Write((uint)fileSize);
+                    writer.Write(Filedata);
+                }
+                else if (!DontFlip)
+                {
+                    writer.Write((uint)fileSize);
+                    byte[] fdata = new byte[Filedata.Length];                  
+                    for (int i = 0; i < Filedata.Length; i++)
+                    {
+                        fdata[i] = (byte)~Filedata[i];
+                    }
+                    writer.Write(fdata);
+                }
+                if (SingleFile) writer.Close();
             }
 
             public void Write(string Datadirectory)
@@ -284,11 +169,6 @@ namespace RSDKv2
                 writer.Close();
             }
         }
-
-        /// <summary>
-        /// the "offset" for file loading I think?
-        /// </summary>
-        public int headerSize;
 
         /// <summary>
         /// a list of directories for the datafile
@@ -308,12 +188,13 @@ namespace RSDKv2
 
         public DataFile(Reader reader)
         {
+            int DataFileSize = (int)reader.BaseStream.Length;
 
-            headerSize = reader.ReadInt32();
-            //Console.WriteLine("Header Size = " + headerSize);
+            int headerSize = reader.ReadInt32();
+            //Console.WriteLine(headerSize);
 
-            int dircount = reader.ReadUInt16();
-            //Console.WriteLine("Directory Count = " + dircount);
+            int dircount = reader.ReadByte();
+            //Console.WriteLine(dircount);
 
             Directories = new List<DirInfo>();
 
@@ -326,7 +207,7 @@ namespace RSDKv2
             {
                 if ((d + 1) < Directories.Count())
                 {
-                    while (reader.Position - headerSize < Directories[d + 1].Address && !reader.IsEof)
+                    while (reader.Pos - headerSize < Directories[d + 1].Address && !reader.IsEof)
                     {
                         FileInfo f = new FileInfo(reader);
                         f.FullFileName = Directories[d].Directory + f.FileName;
@@ -353,7 +234,7 @@ namespace RSDKv2
 
             writer.Write(DirHeaderSize);
 
-            writer.Write((ushort)Directories.Count);
+            writer.Write((byte)Directories.Count);
 
             for (int i = 0; i < Directories.Count; i++)
             {
@@ -386,26 +267,11 @@ namespace RSDKv2
 
             writer.Write(DirHeaderSize);
 
-            writer.Write((ushort)Directories.Count);
+            writer.Write((byte)Directories.Count);
 
             for (int i = 0; i < Directories.Count; i++)
             {
                 Directories[i].Write(writer);
-            }
-
-            Dir = 0;
-
-            for (int i = 0; i < Files.Count; i++)
-            {
-                if (Files[i].DirID == Dir)
-                {
-                    Files[i].Write(writer);
-                }
-                else
-                {
-                    Dir++;
-                    Files[i].Write(writer);
-                }
             }
 
             writer.Close();

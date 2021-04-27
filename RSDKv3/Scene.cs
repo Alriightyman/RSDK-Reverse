@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace RSDKv1
+/*
+This Loader uses code from the programs: "Retro Engine Map Viewer" and TaxEd by -- and Nextvolume respectivley 
+*/
+
+namespace RSDKv2
 {
     public class Scene
     {
@@ -16,17 +20,6 @@ namespace RSDKv1
         /// </summary>
         public ushort[][] MapLayout;
 
-        /// <summary>
-        /// the Max amount of objects that can be in a single stage
-        /// </summary>
-        public int MaxObjectCount
-        {
-            get
-            {
-                return 1056;
-            }
-        }
-
         /* Values for the "Display Bytes" */
         /// <summary>
         /// Active Layer 0, does ???
@@ -35,7 +28,7 @@ namespace RSDKv1
         /// <summary>
         /// Active Layer 0, does ???
         /// </summary>
-        public byte ActiveLayer1 = 2; //Unknown
+        public byte ActiveLayer1 = 9; //Unknown
         /// <summary>
         /// Active Layer 0, does ???
         /// </summary>
@@ -100,6 +93,13 @@ namespace RSDKv1
             }
         }
 
+
+        //Byte 5: Stage.MidPoint
+        //if it's 0 then nothing but the objects are drawn
+        //if its 1 or 2 the tiles on high layer are drawn on the low layer
+        // 3 is default
+        // 4 or above draws tiles that are on the low layer on the high layer
+
         /// <summary>
         /// the list of objects in the stage
         /// </summary>
@@ -117,6 +117,17 @@ namespace RSDKv1
         /// stage height (in chunks)
         /// </summary>
         public ushort height;
+
+        /// <summary>
+        /// the Max amount of objects that can be in a single stage
+        /// </summary>
+        public int MaxObjectCount
+        {
+            get
+            {
+                return 1056;
+            }
+        }
 
         public Scene()
         {
@@ -137,8 +148,7 @@ namespace RSDKv1
         public Scene(Reader reader)
         {
             Title = reader.ReadRSDKString();
-            //Console.WriteLine("Stage Name: " + Title);
-
+            //Console.WriteLine(Title);
             byte[] buffer = new byte[5];
 
             ActiveLayer0 = reader.ReadByte();
@@ -147,13 +157,12 @@ namespace RSDKv1
             ActiveLayer3 = reader.ReadByte();
             Midpoint = reader.ReadByte();
 
-            reader.Read(buffer, 0, 2); //Read Width
+            reader.Read(buffer, 0, 2); //Read size
 
             width = 0; height = 0;
 
-
             // Map width in 128 pixel units
-            // In RSDKv1, it's one byte long
+            // In RSDKv2, it's one byte long
             width = buffer[0];
             height = buffer[1];
 
@@ -183,17 +192,16 @@ namespace RSDKv1
                 string name = reader.ReadRSDKString();
 
                 objectTypeNames.Add(name);
-                //Console.WriteLine(name);
             }
-
             // Read object data
+
             int ObjCount = 0;
 
             // 2 bytes, big-endian, unsigned
             ObjCount = reader.ReadByte() << 8;
             ObjCount |= reader.ReadByte();
 
-            Object.cur_id = 0;
+            Object.cur_id = 32;
 
             for (int n = 0; n < ObjCount; n++)
             {
@@ -212,19 +220,18 @@ namespace RSDKv1
         public void Write(System.IO.Stream stream)
         {
             using (Writer writer = new Writer(stream))
-                this.Write(writer);
+                Write(writer);
         }
 
         internal void Write(Writer writer)
         {
-
             //Checks To Make Sure the Data Is Valid For Saving
 
-            if (this.width > 255)
-                throw new Exception("Cannot save as Type v1. Width in tiles > 255");
+            if (width > 255)
+                throw new Exception("Cannot save as Type v2. Width in tiles > 255");
 
-            if (this.height > 255)
-                throw new Exception("Cannot save as Type v1. Height in tiles > 255");
+            if (height > 255)
+                throw new Exception("Cannot save as Type v2. Height in tiles > 255");
 
             int num_of_objects = objects.Count;
 
@@ -245,14 +252,14 @@ namespace RSDKv1
             writer.Write(Midpoint);
 
             // Write width and height
-            writer.Write((byte)this.width);
-            writer.Write((byte)this.height);
+            writer.Write((byte)width);
+            writer.Write((byte)height);
 
             // Write tile map
 
-            for (int h = 0; h < this.height; h++)
+            for (int h = 0; h < height; h++)
             {
-                for (int w = 0; w < this.width; w++)
+                for (int w = 0; w < width; w++)
                 {
                     writer.Write((byte)(MapLayout[h][w] >> 8));
                     writer.Write((byte)(MapLayout[h][w] & 0xff));
@@ -260,7 +267,7 @@ namespace RSDKv1
             }
 
             // Write number of object type names
-            int num_of_objtype_names = this.objectTypeNames.Count;
+            int num_of_objtype_names = objectTypeNames.Count;
 
             writer.Write((byte)(num_of_objtype_names));
 

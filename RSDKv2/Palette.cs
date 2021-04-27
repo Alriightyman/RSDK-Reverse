@@ -1,7 +1,4 @@
-﻿using System;
-
-
-namespace RSDKv2
+﻿namespace RSDKv1
 {
     public class Palette
     {
@@ -79,11 +76,12 @@ namespace RSDKv2
         internal void Write(Writer writer)
         {
             int palColumns = Colors.Length/16;
-            //Console.WriteLine(palColumns);
+            int c = 0;
+
             foreach (PaletteColour[] column in Colors)
-                if (column != null)
+                if (column != null && c < 32)
                     foreach (PaletteColour color in column)
-                    { color.Write(writer);}
+                    { color.Write(writer); c++; }
         }
 
     }

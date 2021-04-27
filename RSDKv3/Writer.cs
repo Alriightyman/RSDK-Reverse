@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.IO;
 
-namespace RSDKv1
+namespace RSDKv2
 {
     public class Writer : BinaryWriter
     {
@@ -42,7 +42,7 @@ namespace RSDKv1
         public void WriteRSDKString(string val)
         {
             base.Write((byte)val.Length);
-            if (val.Length > 0) base.Write(new UTF8Encoding().GetBytes(val));
+            base.Write(new UTF8Encoding().GetBytes(val));
         }
 
         public void WriteRSDKUnicodeString(string val)
@@ -50,5 +50,6 @@ namespace RSDKv1
             base.Write((ushort)val.Length);
             base.Write(new UnicodeEncoding().GetBytes(val));
         }
+
     }
 }

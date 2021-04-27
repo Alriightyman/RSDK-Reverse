@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace RSDKv1
+namespace RSDKv2
 {
     public class PaletteColour
     {

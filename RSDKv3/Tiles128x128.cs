@@ -1,7 +1,6 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 
-namespace RSDKv1
+namespace RSDKv2
 {
     public class Tiles128x128
     {
@@ -109,12 +108,12 @@ namespace RSDKv1
 
         }
 
-        public Tiles128x128(System.IO.Stream reader) : this(new Reader(reader))
+        public Tiles128x128(System.IO.Stream strm) : this(new Reader(strm))
         {
 
         }
 
-        public Tiles128x128(Reader reader)
+        public Tiles128x128(Reader strm)
         {
             BlockList = new Tile128[512];
             byte[] mappingEntry = new byte[3];
@@ -126,25 +125,25 @@ namespace RSDKv1
                 {
                     for (int x = 0; x < 8; x++)
                     {
-                        reader.Read(mappingEntry, 0, mappingEntry.Length);
+                        strm.Read(mappingEntry, 0, mappingEntry.Length);
                         mappingEntry[0] = (byte)(mappingEntry[0] - (mappingEntry[0] >> 6 << 6));
+
                         currentBlock.Mapping[y][x].VisualPlane = (byte)(mappingEntry[0] >> 4);
                         mappingEntry[0] = (byte)(mappingEntry[0] - (mappingEntry[0] >> 4 << 4));
+
                         currentBlock.Mapping[y][x].Direction = (byte)(mappingEntry[0] >> 2);
                         mappingEntry[0] = (byte)(mappingEntry[0] - (mappingEntry[0] >> 2 << 2));
+
                         currentBlock.Mapping[y][x].Tile16x16 = (ushort)((mappingEntry[0] << 8) + mappingEntry[1]);
+
                         currentBlock.Mapping[y][x].CollisionFlag0 = (byte)(mappingEntry[2] >> 4);
                         currentBlock.Mapping[y][x].CollisionFlag1 = (byte)(mappingEntry[2] - (mappingEntry[2] >> 4 << 4));
-                        if (currentBlock.Mapping[y][x].CollisionFlag0 > 3 || currentBlock.Mapping[y][x].CollisionFlag0 > 3)
-                        {
-                            Console.WriteLine();
-                        }
                     }
                 }
                 BlockList[c] = currentBlock;
                 currentBlock = new Tile128();
             }
-            reader.Close();
+            strm.Close();
         }
 
         public void Write(string filename)
@@ -158,7 +157,6 @@ namespace RSDKv1
             using (Writer writer = new Writer(stream))
                 this.Write(writer);
         }
-
 
         internal void Write(Writer writer)
         {

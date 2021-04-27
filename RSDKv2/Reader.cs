@@ -2,7 +2,7 @@
 using System.Text;
 using System.IO;
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class Reader : BinaryReader
     {
@@ -19,6 +19,7 @@ namespace RSDKv2
             var fileStream = BaseStream as FileStream;
             return fileStream.Name;
         }
+
         public byte[] ReadBytes(long count)
         {
             if (count < 0 || count > Int32.MaxValue)
@@ -50,32 +51,14 @@ namespace RSDKv2
             BaseStream.Seek(position, org);
         }
         
-        public long Position
+        public long Pos
         {
-            get 
-            {
-                return BaseStream.Position; 
-            }
-            set
-            {
-                BaseStream.Position = value;
-            }
+            get { return BaseStream.Position; }
         }
-
-        public long Remaining
-        {
-            get 
-            { 
-                return BaseStream.Length - Position; 
-            }
-        }
-
+        
         public long Size
         {
-            get 
-            { 
-                return BaseStream.Length; 
-            }
+            get { return BaseStream.Length; }
         }
         
         public uint ReadUInt32BE()

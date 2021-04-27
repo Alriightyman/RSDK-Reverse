@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace RSDKv2
+namespace RSDKv1
 {
     public class Stageconfig
     {
@@ -13,10 +12,6 @@ namespace RSDKv2
         /// the list of Stage SoundFX paths
         /// </summary>
         public List<string> SoundFX = new List<string>();
-        /// <summary>
-        /// a list of names for each script
-        /// </summary>
-        public List<string> ObjectsNames = new List<string>();
         /// <summary>
         /// A list of the script filepaths for the stage-specific objects
         /// </summary>
@@ -60,18 +55,14 @@ namespace RSDKv2
             byte objects_count = reader.ReadByte();
 
             for (int i = 0; i < objects_count; ++i)
-            { ObjectsNames.Add(reader.ReadRSDKString()); }
-            for (int i = 0; i < objects_count; ++i)
             { ScriptPaths.Add(reader.ReadRSDKString()); }
         }
 
         internal void WriteObjectsNames(Writer writer)
         {
-            writer.Write((byte)ObjectsNames.Count);
-            foreach (string name in ObjectsNames)
+            writer.Write((byte)ScriptPaths.Count);
+            foreach (string name in ScriptPaths)
                 writer.WriteRSDKString(name);
-            foreach (string srcname in ScriptPaths)
-                writer.WriteRSDKString(srcname);
         }
 
         internal void ReadWAVConfiguration(Reader reader)
@@ -112,7 +103,6 @@ namespace RSDKv2
             WriteWAVConfiguration(writer);
 
             writer.Close();
-
         }
 
     }

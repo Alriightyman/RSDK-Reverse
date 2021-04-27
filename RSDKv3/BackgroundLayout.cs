@@ -1,11 +1,58 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RSDKv1
+namespace RSDKv2
 {
     /* Background Layout */
     public class BGLayout
     {
+        public class ScrollInfo
+        {
+            /// <summary>
+            /// how fast the line moves while the player is moving
+            /// </summary>
+            public short RelativeSpeed;
+            /// <summary>
+            /// How fast the line moves without the player moving
+            /// </summary>
+            public short ConstantSpeed;
+            /// <summary>
+            /// a special byte that tells the game what "behaviour" property the layer has
+            /// </summary>
+            public byte Behaviour;
+
+            public ScrollInfo()
+            {
+                RelativeSpeed = 0;
+                ConstantSpeed = 0;
+                Behaviour = 0;
+            }
+
+            public ScrollInfo(byte r, byte c, byte b)
+            {
+                RelativeSpeed = r;
+                ConstantSpeed = c;
+                Behaviour = b;
+            }
+
+            public ScrollInfo(Reader reader)
+            {
+                // 2 bytes, big-endian, unsigned
+                RelativeSpeed = (short)(reader.ReadByte() << 8);
+                RelativeSpeed |= (short)reader.ReadByte();
+                ConstantSpeed = reader.ReadByte();
+                Behaviour = reader.ReadByte();
+            }
+
+            public void Write(Writer writer)
+            {
+                writer.Write((byte)(RelativeSpeed >> 8));
+                writer.Write((byte)(RelativeSpeed & 0xFF));
+                writer.Write(ConstantSpeed);
+                writer.Write(Behaviour);
+            }
+
+        }
 
         public class BGLayer
         {
@@ -23,20 +70,17 @@ namespace RSDKv1
             /// </summary>
             public byte height = 0;
             /// <summary>
-            /// the deform value
-            /// set it to 1 for Horizontal parallax, 2 for Vertical parallax, 3 for "3D Sky", anything else for nothing
-            /// (aka "behaviour")
+            /// a special byte that tells the game what "behaviour" property the layer has
             /// </summary>
-            public byte Deform;
+            public byte Behaviour;
             /// <summary>
             /// how fast the Layer moves while the player is moving
             /// </summary>
-            public byte RelativeSpeed;
+            public short RelativeSpeed;
             /// <summary>
             /// how fast the layer moves while the player isn't moving
             /// </summary>
-            public byte ConstantSpeed;
-
+            public short ConstantSpeed;
             /// <summary>
             /// a list of Line positions
             /// </summary>
@@ -45,9 +89,11 @@ namespace RSDKv1
             public BGLayer()
             {
                 width = height = 1;
-                Deform = 0;
+                Behaviour = 0;
                 RelativeSpeed = ConstantSpeed = 0;
+
                 LineIndexes = new byte[height * 128];
+
                 MapLayout = new ushort[height][];
                 for (int m = 0; m < height; m++)
                 {
@@ -59,9 +105,11 @@ namespace RSDKv1
             {
                 width = w;
                 height = h;
-                Deform = 0;
+                Behaviour = 0;
                 RelativeSpeed = ConstantSpeed = 0;
+
                 LineIndexes = new byte[height * 128];
+
                 MapLayout = new ushort[height][];
                 for (int m = 0; m < height; m++)
                 {
@@ -73,8 +121,9 @@ namespace RSDKv1
             {
                 width = reader.ReadByte();
                 height = reader.ReadByte();
-                Deform = reader.ReadByte();
-                RelativeSpeed = reader.ReadByte();
+                Behaviour = reader.ReadByte();
+                RelativeSpeed = (short)(reader.ReadByte() << 8);
+                RelativeSpeed |= (short)reader.ReadByte();
                 ConstantSpeed = reader.ReadByte();
 
                 byte[] buf = new byte[3];
@@ -87,10 +136,10 @@ namespace RSDKv1
                 while (!finished)
                 {
                     buf[0] = reader.ReadByte();
-                    if (buf[0] == 255)
+                    if (buf[0] == 0xFF)
                     {
                         buf[1] = reader.ReadByte();
-                        if (buf[1] == 255)
+                        if (buf[1] == 0xFF)
                         {
                             finished = true;
                             break;
@@ -113,6 +162,8 @@ namespace RSDKv1
                     }
                 }
 
+                byte[] buffer = new byte[2];
+
                 MapLayout = new ushort[height][];
                 for (int m = 0; m < height; m++)
                 {
@@ -122,7 +173,8 @@ namespace RSDKv1
                 {
                     for (int x = 0; x < width; x++)
                     {
-                        MapLayout[y][x] = reader.ReadByte();
+                        reader.Read(buffer, 0, 2); //Read size
+                        MapLayout[y][x] = (ushort)(buffer[1] + (buffer[0] << 8));
                     }
                 }
             }
@@ -131,8 +183,9 @@ namespace RSDKv1
             {
                 writer.Write(width);
                 writer.Write(height);
-                writer.Write(Deform);
-                writer.Write(RelativeSpeed);
+                writer.Write(Behaviour);
+                writer.Write((byte)(RelativeSpeed >> 8));
+                writer.Write((byte)(RelativeSpeed & 0xFF));
                 writer.Write(ConstantSpeed);
 
                 // Output data
@@ -159,77 +212,34 @@ namespace RSDKv1
                 {
                     for (int w = 0; w < width; w++)
                     {
-                        writer.Write((byte)(MapLayout[h][w]));
+                        writer.Write((byte)(MapLayout[h][w] >> 8));
+                        writer.Write((byte)(MapLayout[h][w] & 0xFF));
                     }
                 }
 
             }
 
-            private static void rle_write(Writer file, int pixel, int count)
+            private static void rle_write(Writer file, int value, int count)
             {
                 if (count <= 2)
                 {
                     for (int y = 0; y < count; y++)
-                        file.Write((byte)pixel);
+                    {
+                        file.Write((byte)value);
+                    }
                 }
                 else
                 {
                     while (count > 0)
                     {
                         file.Write((byte)0xFF);
-
-                        file.Write((byte)pixel);
-
+                        file.Write((byte)value);
                         file.Write((byte)((count > 253) ? 254 : (count + 1)));
                         count -= 253;
                     }
                 }
             }
 
-        }
-
-        public class ScrollInfo
-        {
-            /// <summary>
-            /// how fast the line moves while the player is moving
-            /// </summary>
-            public byte RelativeSpeed; //Known as "Speed" in Taxman's Editor
-            /// <summary>
-            /// How fast the line moves without the player moving
-            /// </summary>
-            public byte ConstantSpeed; //Known as "Scroll" in Taxman's Editor
-            /// <summary>
-            /// Behaviour Value, controls special line FX
-            /// </summary>
-            public byte Deform; //Known as "Deform" in Taxman's Editor, Same here!
-
-            public ScrollInfo()
-            {
-                RelativeSpeed = 0;
-                ConstantSpeed = 0;
-                Deform = 0;
-            }
-
-            public ScrollInfo(byte r, byte c, byte d)
-            {
-                RelativeSpeed = r;
-                ConstantSpeed = c;
-                Deform = d;
-            }
-
-            public ScrollInfo(Reader reader)
-            {
-                RelativeSpeed = reader.ReadByte();
-                ConstantSpeed = reader.ReadByte();
-                Deform = reader.ReadByte();
-            }
-
-            public void Write(Writer writer)
-            {
-                writer.Write(RelativeSpeed);
-                writer.Write(ConstantSpeed);
-                writer.Write(Deform);
-            }
         }
 
         /// <summary>
@@ -262,7 +272,8 @@ namespace RSDKv1
 
         public BGLayout(Reader reader)
         {
-            byte layerCount = reader.ReadByte();
+            byte LayerCount = reader.ReadByte();
+
             byte HLineCount = reader.ReadByte();
 
             for (int i = 0; i < HLineCount; i++)
@@ -278,14 +289,12 @@ namespace RSDKv1
                 VLines.Add(p);
             }
 
-            for (int i = 0; i < layerCount; i++) //Read BG Layers
+            for (int i = 0; i < LayerCount; i++)
             {
                 Layers.Add(new BGLayer(reader));
             }
 
-            //Console.WriteLine("Max Pos " + reader.BaseStream.Length + ", cur pos " + reader.Pos);
             reader.Close();
-
         }
 
         public void Write(string filename)
@@ -302,17 +311,14 @@ namespace RSDKv1
 
         internal void Write(Writer writer)
         {
-            // Save Data
             writer.Write((byte)Layers.Count);
-
             writer.Write((byte)HLines.Count);
+            writer.Write((byte)VLines.Count);
 
             for (int i = 0; i < HLines.Count; i++)
             {
                 HLines[i].Write(writer);
             }
-
-            writer.Write((byte)VLines.Count);
 
             for (int i = 0; i < VLines.Count; i++)
             {
@@ -325,7 +331,6 @@ namespace RSDKv1
             }
 
             writer.Close();
-
         }
     }
 }
